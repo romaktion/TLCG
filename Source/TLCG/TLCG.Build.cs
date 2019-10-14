@@ -6,7 +6,7 @@ public class TLCG : ModuleRules
 {
 	public TLCG(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		PrivatePCHHeaderFile = "Public/TLCGPrivatePCH.h";
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
 
