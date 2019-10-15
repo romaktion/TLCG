@@ -3,13 +3,12 @@
 
 #include "TLCGMovement.h"
 #include "UnrealNetwork.h"
+#include "TLCGPawnTrack.h"
 
 UTLCGMovement::UTLCGMovement(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-, PermissibleNetworkDiscrepancy(15.f)
-, RepLocation(FVector::ZeroVector)
-, RepZRotation(0.f)
 , CachedOwner(nullptr)
 , PrevLoc(FVector::ZeroVector)
+, Sweep(false)
 {
 	MaxSpeed = 100;
 	bReplicates = true;
@@ -21,7 +20,16 @@ void UTLCGMovement::BeginPlay()
 	Super::BeginPlay();
 
 	CachedOwner = GetOwner();
-	PrevLoc = CachedOwner->GetActorLocation();
+
+	if (CachedOwner)
+	{
+		PrevLoc = CachedOwner->GetActorLocation();
+
+		if (CachedOwner->Role == ROLE_Authority)
+		{
+			Sweep = true;
+		}
+	}
 }
 
 void UTLCGMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -40,42 +48,64 @@ void UTLCGMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, FAc
 		}
 	}
 
-	MoveUpdatedComponent(CachedOwner->GetActorForwardVector() * DeltaTime * GetMaxSpeed(), FQuat(CachedOwner->GetActorRotation()), false, &HitResult, ETeleportType::None);
+	MoveUpdatedComponent(CachedOwner->GetActorForwardVector() * DeltaTime * GetMaxSpeed(), FQuat(CachedOwner->GetActorRotation()), Sweep, &HitResult, ETeleportType::None);
 
-	if (CachedOwner->Role == ROLE_Authority)
-	{
-		RepLocation = GetActorLocation();
-
-		if (!FMath::IsNearlyEqual(CachedOwner->GetActorRotation().Yaw, RepZRotation))
-		{
-			RepZRotation = CachedOwner->GetActorRotation().Yaw;
-		}
-	}
-	else
-	{
-		//Possible Correction
-		if ((CachedOwner->GetActorLocation() - RepLocation).Size() > PermissibleNetworkDiscrepancy)
-		{
-			CachedOwner->SetActorLocation(RepLocation);
-			UE_LOG(LogTemp, Log, TEXT("Correction!!!"));
-		}
-	}
 
 	//Set Velocity
 	Velocity = CachedOwner->GetActorLocation() - PrevLoc;
 	PrevLoc = CachedOwner->GetActorLocation();
 }
 
-void UTLCGMovement::OnRep_RepZRotation()
+void UTLCGMovement::TurnRight(ATLCGPawnTrack* NewTrack)
+{
+	if (CachedOwner->Role == ROLE_Authority)
+	{
+		CachedOwner->AddActorWorldRotation(FQuat(FRotator(0.f, 90.f, 0.f)));
+		auto OldData = RepData;
+		RepData = FRepData(CachedOwner->GetActorLocation(), CachedOwner->GetActorRotation().Yaw, NewTrack);
+		OnRep_RepData(OldData);
+	}
+}
+
+void UTLCGMovement::TurnLeft(ATLCGPawnTrack* NewTrack)
+{
+	if (CachedOwner->Role == ROLE_Authority)
+	{
+		CachedOwner->AddActorWorldRotation(FQuat(FRotator(0.f, -90.f, 0.f)));
+		auto OldData = RepData;
+		RepData = FRepData(CachedOwner->GetActorLocation(), CachedOwner->GetActorRotation().Yaw, NewTrack);
+		OnRep_RepData(OldData);
+	}
+}
+
+void UTLCGMovement::SetRepData(const FRepData& NewRepData)
+{
+	if (CachedOwner && CachedOwner->Role == ROLE_Authority)
+	{
+		auto OldData = RepData;
+		RepData = NewRepData;
+		OnRep_RepData(OldData);
+	}
+}
+
+const FRepData& UTLCGMovement::GetRepData() const
+{
+	return RepData;
+}
+
+void UTLCGMovement::OnRep_RepData(FRepData OldData)
 {
 	if (CachedOwner)
-		CachedOwner->SetActorRotation(FRotator(0.f, RepZRotation, 0.f));
+	{
+		CachedOwner->SetActorLocationAndRotation(RepData.Location, FQuat(FRotator(CachedOwner->GetActorRotation().Pitch, RepData.Yaw, CachedOwner->GetActorRotation().Roll)));
+	
+		OnRotate.Broadcast(CachedOwner->GetActorTransform(), RepData.Track, OldData.Track);
+	}
 }
 
 void UTLCGMovement::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UTLCGMovement, RepLocation);
-	DOREPLIFETIME(UTLCGMovement, RepZRotation);
+	DOREPLIFETIME(UTLCGMovement, RepData);
 }

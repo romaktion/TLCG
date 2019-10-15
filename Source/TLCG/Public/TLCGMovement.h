@@ -5,6 +5,38 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "TLCGMovement.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_ThreeParams(FOnRotateSignature, UTLCGMovement, OnRotate, const FTransform&, NewTransform, ATLCGPawnTrack*, NewTrack, ATLCGPawnTrack*, OldTrack);
+
+USTRUCT()
+struct FRepData
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	FVector_NetQuantize Location;
+
+	UPROPERTY()
+	float Yaw;
+
+	UPROPERTY()
+	ATLCGPawnTrack* Track;
+
+	FRepData()
+	{
+		Location = FVector_NetQuantize();
+		Yaw = 0.f;
+		Track = nullptr;
+	}
+
+	FRepData(const FVector& NewLocation, float NewYaw, ATLCGPawnTrack* NewTrack)
+	{
+		Location = NewLocation;
+		Yaw = NewYaw;
+		Track = NewTrack;
+	}
+};
+
 /**
  * 
  */
@@ -17,22 +49,29 @@ class TLCG_API UTLCGMovement : public UFloatingPawnMovement
 
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Network")
-	float PermissibleNetworkDiscrepancy;
+	void TurnRight(ATLCGPawnTrack* NewTrack);
+
+	void TurnLeft(ATLCGPawnTrack* NewTrack);
+
+	void SetRepData(const FRepData& NewRepData);
+
+	const FRepData& GetRepData() const;
+
+	UPROPERTY()
+	FOnRotateSignature OnRotate;
 
 private:
 	UFUNCTION()
-	void OnRep_RepZRotation();
+	void OnRep_RepData(FRepData OldData);
 
-	UPROPERTY(Replicated)
-	FVector_NetQuantize RepLocation;
-
-	UPROPERTY(ReplicatedUsing = OnRep_RepZRotation)
-	float RepZRotation;
+	UPROPERTY(ReplicatedUsing = OnRep_RepData)
+	FRepData RepData;
 
 	FHitResult HitResult;
 
 	AActor* CachedOwner;
 
 	FVector PrevLoc;
+
+	bool Sweep;
 };
