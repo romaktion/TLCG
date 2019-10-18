@@ -3,3 +3,8 @@
 
 #include "TLCGGameInstance.h"
 
+UTLCGGameInstance::UTLCGGameInstance(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+, Win(false)
+{
+
+}

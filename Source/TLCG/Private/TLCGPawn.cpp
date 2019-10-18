@@ -8,13 +8,16 @@
 #include "Components/BoxComponent.h"
 #include "Components/InputComponent.h"
 #include "TLCGPawnTrack.h"
+#include "TLCGPlayerController.h"
+#include "TLCGPlayerState.h"
+#include "TLCGGameState.h"
 
 
 // Sets default values
 ATLCGPawn::ATLCGPawn(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 , TrackClass(nullptr)
 , InitialTracksPoolSize(100)
-, Killed(false)
+, StartTransform(FTransform::Identity)
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -116,7 +119,26 @@ void ATLCGPawn::Tick(float DeltaSeconds)
 void ATLCGPawn::StartBattle()
 {
 	if (Role == ROLE_Authority && TLCMovement)
+	{
+		if (SpawnedTracks.Num() > 0)
+		{
+			for (auto &ST : SpawnedTracks)
+			{
+				ST->MulticastEnable(false);
+				TracksPool.Push(ST);
+				ST = nullptr;
+			}
+
+			SpawnedTracks.RemoveAll([](auto ST) { return !ST; });
+		}
+		
+		if (StartTransform.Equals(FTransform::Identity))
+		{
+			StartTransform = GetActorTransform();
+		}
+
 		TLCMovement->Activate();
+	}
 }
 
 void ATLCGPawn::StopBattle()
@@ -174,14 +196,38 @@ void ATLCGPawn::Skill()
 
 void ATLCGPawn::OnKilled(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	auto PS = Cast<ATLCGPlayerState>(GetPlayerState());
+
+	if (!PS)
+		return;
+
+	if (PS->GetPlayerState() == EPlayerStateEnum::PS_Killed)
+		return;
+
+	PS->SetPlayerState(EPlayerStateEnum::PS_Killed);
+
 	if (TLCMovement)
 		TLCMovement->Deactivate();
+
+	PS->OnPlayerKilled.Broadcast(this);
 
 	MulticastOnKilled();
 }
 
 void ATLCGPawn::OnMoveActivated(UActorComponent* Component, bool bReset)
 {
+	auto SpawnedTrack = SpawnTrack();
+
+	FRepData RepData = StartTransform.Equals(FTransform::Identity) ?
+		FRepData(GetActorLocation(), GetActorRotation().Yaw, SpawnTrack()) :
+		FRepData(StartTransform.GetLocation(), StartTransform.GetRotation().Rotator().Yaw, SpawnedTrack);
+
+	if (TLCMovement)
+	{
+		TLCMovement->SetRepData(FRepData(RepData));
+	}
+
+	MulticastOnRespawn();
 	MulticastOnMoveActivated();
 }
 
@@ -205,8 +251,7 @@ void ATLCGPawn::OnRotate(const FTransform& NewTransform, ATLCGPawnTrack* NewTrac
 		NewTrack->SetActorLocation(NewTransform.GetLocation() + NewTransform.GetRotation().Vector() * -1.f * BoxComponent->GetScaledBoxExtent().Y);
 		NewTrack->SetActorRotation(NewTransform.GetRotation());
 		NewTrack->SetActorScale3D(FVector(0.0001f, NewTrack->GetActorScale3D().Y, NewTrack->GetActorScale3D().Z));
-		NewTrack->SetActorEnableCollision(Role == ROLE_Authority ? true : false);
-		NewTrack->SetActorHiddenInGame(false);
+		NewTrack->MulticastEnable_Implementation(true);
 	}
 
 	if (OldTrack && Role == ROLE_Authority)
@@ -230,6 +275,14 @@ void ATLCGPawn::OnRotate(const FTransform& NewTransform, ATLCGPawnTrack* NewTrac
 		if (BoxComponent)
 			BoxComponent->MoveIgnoreActors.Remove(OldTrack);
 	}
+}
+
+void ATLCGPawn::MulticastOnRespawn_Implementation()
+{
+	SetActorEnableCollision(true);
+	SetActorHiddenInGame(false);
+
+	K2_OnRespawn();
 }
 
 ATLCGPawnTrack* ATLCGPawn::SpawnTrack()
@@ -260,13 +313,6 @@ void ATLCGPawn::MulticastOnRotate_Implementation()
 
 void ATLCGPawn::MulticastOnMoveActivated_Implementation()
 {
-	auto SpawnedTrack = SpawnTrack();
-
-	if (TLCMovement)
-	{
-		TLCMovement->SetRepData(FRepData(GetActorLocation(), GetActorRotation().Yaw, SpawnedTrack));
-	}
-
 	K2_OnMoveActivated();
 }
 
@@ -277,5 +323,15 @@ void ATLCGPawn::MulticastOnMoveDeactivated_Implementation()
 
 void ATLCGPawn::MulticastOnKilled_Implementation()
 {
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+
 	K2_OnKilled();
+}
+
+void ATLCGPawn::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ATLCGPawn, Color);
 }

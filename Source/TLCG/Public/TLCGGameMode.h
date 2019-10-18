@@ -5,6 +5,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "TLCGGameMode.generated.h"
 
+
 /**
  * 
  */
@@ -13,4 +14,18 @@ class TLCG_API ATLCGGameMode : public AGameModeBase
 {
 	GENERATED_UCLASS_BODY()
 	
+	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
+
+	virtual FString	InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;
+
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+private:
+	UFUNCTION()
+	void OnKilled(AActor* PlayerPawn);
+
+	TArray<APlayerController*> PlayerControllers;
+
+	UPROPERTY(EditDefaultsOnly)
+	int32 PlayersToStart;
 };

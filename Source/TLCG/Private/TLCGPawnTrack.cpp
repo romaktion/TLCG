@@ -44,6 +44,10 @@ void ATLCGPawnTrack::MulticastEnable_Implementation(bool Enable)
 {
 	SetActorEnableCollision(Role == ROLE_Authority ? Enable : false);
 	SetActorHiddenInGame(!Enable);
+	if (!Enable)
+	{
+		SetActorScale3D(FVector(0.0001f, GetActorScale3D().Y, GetActorScale3D().Z));
+	}
 }
 
 void ATLCGPawnTrack::MulticastSetTransform_Implementation(const FTransform& NewTransform)

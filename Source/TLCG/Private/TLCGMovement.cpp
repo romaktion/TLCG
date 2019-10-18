@@ -61,9 +61,8 @@ void UTLCGMovement::TurnRight(ATLCGPawnTrack* NewTrack)
 	if (CachedOwner->Role == ROLE_Authority)
 	{
 		CachedOwner->AddActorWorldRotation(FQuat(FRotator(0.f, 90.f, 0.f)));
-		auto OldData = RepData;
-		RepData = FRepData(CachedOwner->GetActorLocation(), CachedOwner->GetActorRotation().Yaw, NewTrack);
-		OnRep_RepData(OldData);
+
+		SetRepData(FRepData(CachedOwner->GetActorLocation(), CachedOwner->GetActorRotation().Yaw, NewTrack));
 	}
 }
 
@@ -72,9 +71,8 @@ void UTLCGMovement::TurnLeft(ATLCGPawnTrack* NewTrack)
 	if (CachedOwner->Role == ROLE_Authority)
 	{
 		CachedOwner->AddActorWorldRotation(FQuat(FRotator(0.f, -90.f, 0.f)));
-		auto OldData = RepData;
-		RepData = FRepData(CachedOwner->GetActorLocation(), CachedOwner->GetActorRotation().Yaw, NewTrack);
-		OnRep_RepData(OldData);
+
+		SetRepData(FRepData(CachedOwner->GetActorLocation(), CachedOwner->GetActorRotation().Yaw, NewTrack));
 	}
 }
 
@@ -97,6 +95,8 @@ void UTLCGMovement::OnRep_RepData(FRepData OldData)
 {
 	if (CachedOwner)
 	{
+		PrevLoc = RepData.Location;
+
 		CachedOwner->SetActorLocationAndRotation(RepData.Location, FQuat(FRotator(CachedOwner->GetActorRotation().Pitch, RepData.Yaw, CachedOwner->GetActorRotation().Roll)));
 	
 		OnRotate.Broadcast(CachedOwner->GetActorTransform(), RepData.Track, OldData.Track);

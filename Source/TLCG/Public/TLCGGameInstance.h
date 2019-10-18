@@ -11,6 +11,13 @@
 UCLASS()
 class TLCG_API UTLCGGameInstance : public UGameInstance
 {
-	GENERATED_BODY()
+	GENERATED_UCLASS_BODY()
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TMap<FString, int32> LeaderBoard;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool Win;
+
+	int32 CountDuplicates;
 };

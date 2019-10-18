@@ -5,6 +5,7 @@
 #include "Engine/World.h"
 #include "GameFramework//PlayerController.h"
 #include "TLCGBattleInterface.h"
+#include "ConfigCacheIni.h"
 
 void UTLCGBlueprintFunctionLibrary::StartBattle()
 {
@@ -43,4 +44,23 @@ void UTLCGBlueprintFunctionLibrary::StopBattle()
 			}
 		}
 	}
+}
+
+void UTLCGBlueprintFunctionLibrary::SetStringToConfig(const FString& Section, const FString& ValueName, const FString& Value)
+{
+	if (!GConfig)
+		return;
+
+	GConfig->SetString(*Section, *ValueName, *Value, GGameIni);
+	GConfig->Flush(false, GGameIni);
+}
+
+FString UTLCGBlueprintFunctionLibrary::GetStringFromConfig(const FString& Section, const FString& ValueName, bool& IfFind)
+{
+	if (!GConfig)
+		return FString("");
+
+	FString NewValue = "";
+	IfFind = GConfig->GetString(*Section, *ValueName, NewValue, GGameIni);
+	return NewValue;
 }

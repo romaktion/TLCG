@@ -32,6 +32,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "TLCGPawn", DisplayName = "OnKilled")
 	void K2_OnKilled();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "TLCGPawn", DisplayName = "OnRespawn")
+	void K2_OnRespawn();
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "TLCGPawn", DisplayName = "OnMoveActivated")
 	void K2_OnMoveActivated();
 
@@ -53,8 +56,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Track")
 	uint32 InitialTracksPoolSize;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	bool Killed;
+	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadOnly)
+	FLinearColor Color;
 
 private:
 	UFUNCTION()
@@ -94,6 +97,9 @@ private:
 	void MulticastOnKilled();
 
 	UFUNCTION(NetMulticast, Reliable)
+	void MulticastOnRespawn();
+
+	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnMoveActivated();
 
 	UFUNCTION(NetMulticast, Reliable)
@@ -102,5 +108,7 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnRotate();
 
-	 ATLCGPawnTrack* SpawnTrack();
+	ATLCGPawnTrack* SpawnTrack();
+
+	FTransform StartTransform;
 };
