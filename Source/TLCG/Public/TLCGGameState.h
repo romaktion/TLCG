@@ -9,6 +9,7 @@ class APlayerState;
 class ATLCGPawn;
 
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_TwoParams(FOnRoundOverSignature, ATLCGGameState, OnRoundOver, int32, PlayerNumber, float, Score);
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnInitNewPlayerSignature, ATLCGGameState, OnInitNewPlayer, APlayerState*, NewPlayer);
 
 
 UENUM(BlueprintType)
@@ -71,14 +72,23 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnRoundOver(int32 InPlayerNumber, float InScore);
 
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastOnInitPlayer(APlayerState* NewPlayer);
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int32 ScoreToWin;
 
 	UPROPERTY(BlueprintAssignable, Category = "TLCHGame")
 	FOnRoundOverSignature OnRoundOver;
 
+	UPROPERTY(BlueprintAssignable, Category = "TLCHGame")
+	FOnInitNewPlayerSignature OnInitNewPlayer;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TArray<APlayerController*> PlayerControllers;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+	TArray<APlayerState*> PlayerStates;
 
 private:
 	UFUNCTION()

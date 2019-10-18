@@ -151,6 +151,11 @@ void ATLCGGameState::StartRound()
 	GetWorldTimerManager().SetTimer(StartRoundTimerHandle, this, &ATLCGGameState::PerformStartRound, 3.f);
 }
 
+void ATLCGGameState::MulticastOnInitPlayer_Implementation(APlayerState* NewPlayer)
+{
+	OnInitNewPlayer.Broadcast(NewPlayer);
+}
+
 void ATLCGGameState::MulticastOnRoundOver_Implementation(int32 InPlayerNumber, float InScore)
 {
 	OnRoundOver.Broadcast(InPlayerNumber, InScore);
@@ -189,4 +194,5 @@ void ATLCGGameState::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ATLCGGameState, GameState);
+	DOREPLIFETIME(ATLCGGameState, PlayerStates);
 }

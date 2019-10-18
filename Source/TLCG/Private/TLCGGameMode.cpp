@@ -86,11 +86,15 @@ FString ATLCGGameMode::InitNewPlayer(APlayerController* NewPlayerController, con
 	PlayersToStart = 4;
 #endif
 
-	if (PlayerControllers.Num() == PlayersToStart)
+	auto GS = GetGameState<ATLCGGameState>();
+	if (GS)
 	{
-		auto GS = GetGameState<ATLCGGameState>();
-		if (GS)
+		if (PlayerControllers.Num() == PlayersToStart)
+		{
 			GS->StartGame(PlayerControllers);
+		}
+
+		GS->PlayerStates.Add(PlayerState);
 	}
 
 	return Super::InitNewPlayer(NewPlayerController, UniqueId, OptionsCopy, Portal);
@@ -143,8 +147,6 @@ void ATLCGGameMode::OnKilled(AActor* PlayerPawn)
 
 	if (CountAlivePlayers <= 1)
 	{
-		ensureMsgf(CountAlivePlayers > 0, TEXT("No alive players left after round is over!"));
-
 		auto GS = Cast<ATLCGGameState>(World->GetGameState());
 		if (GS)
 		{

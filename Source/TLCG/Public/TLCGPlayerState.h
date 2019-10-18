@@ -42,7 +42,15 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "TLCGPawn")
 	FOnPlayerKilledSignature OnPlayerKilled;
 
+protected:
+	virtual void BeginPlay() override;
+
 private:
+	UFUNCTION()
+	void OnInitPlayerTimer();
+
 	UPROPERTY(Replicated)
 	EPlayerStateEnum PlayerState;
+
+	FTimerHandle OnInitPlayerTimerHandle;
 };
