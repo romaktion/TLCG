@@ -28,4 +28,8 @@ private:
 
 	UPROPERTY(EditDefaultsOnly)
 	int32 PlayersToStart;
+
+	TArray<FString> PlayerNames;
+
+	uint32 CountPlayerNamesDuplicates;
 };

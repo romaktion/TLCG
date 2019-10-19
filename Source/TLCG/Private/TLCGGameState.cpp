@@ -12,6 +12,7 @@
 
 ATLCGGameState::ATLCGGameState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 , ScoreToWin(3)
+, RoundNumber(-1)
 , GameState(EGameStateEnum::GS_GameNotStarted)
 {
 
@@ -93,12 +94,12 @@ void ATLCGGameState::PerformGameOver()
 			if (PS)
 			{
 				auto PN = PS->GetPlayerName();
-				auto Finded = LB_Map.Find(PN);
+				/*auto Finded = LB_Map.Find(PN);
 				if (Finded)
 				{
 					CountDuplicates++;
 					PN.AppendInt(CountDuplicates);
-				}
+				}*/
 
 				LB_Map.Add(PN, PS->Score);
 				LB_Map.ValueSort([](int32 A, int32 B) { return A > B; });
@@ -151,6 +152,11 @@ void ATLCGGameState::StartRound()
 	GetWorldTimerManager().SetTimer(StartRoundTimerHandle, this, &ATLCGGameState::PerformStartRound, 3.f);
 }
 
+void ATLCGGameState::MulticastOnRoundStart_Implementation(int32 NewRoundNumber)
+{
+	OnRoundStart.Broadcast(NewRoundNumber);
+}
+
 void ATLCGGameState::MulticastOnInitPlayer_Implementation(APlayerState* NewPlayer)
 {
 	OnInitNewPlayer.Broadcast(NewPlayer);
@@ -166,6 +172,8 @@ void ATLCGGameState::PerformStartRound()
 	auto World = GetWorld();
 	if (!World)
 		return;
+
+	RoundNumber++;
 
 	uint32 CountPlayers = 0;
 
@@ -187,6 +195,8 @@ void ATLCGGameState::PerformStartRound()
 	GameState = EGameStateEnum::GS_RoundInProgress;
 
 	UTLCGBlueprintFunctionLibrary::StartBattle();
+
+	MulticastOnRoundStart(RoundNumber);
 }
 
 void ATLCGGameState::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const

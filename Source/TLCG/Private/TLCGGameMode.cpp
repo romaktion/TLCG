@@ -14,6 +14,7 @@
 
 ATLCGGameMode::ATLCGGameMode(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 , PlayersToStart(4)
+, CountPlayerNamesDuplicates(0)
 {
 	GameStateClass = ATLCGGameState::StaticClass();
 	PlayerStateClass = ATLCGPlayerState::StaticClass();
@@ -70,6 +71,14 @@ FString ATLCGGameMode::InitNewPlayer(APlayerController* NewPlayerController, con
 		{
 			OptionsCopy.Append(FString::Printf(TEXT("?%s"), *O));
 		}
+
+		if (PlayerNames.Num() > 0 && PlayerNames.Contains(PlayerName))
+		{
+			CountPlayerNamesDuplicates++;
+			PlayerName.AppendInt(CountPlayerNamesDuplicates);
+		}
+
+		PlayerNames.Add(PlayerName);
 
 		OptionsCopy.Append(FString::Printf(TEXT("?Name=%s"), *PlayerName));
 	}
