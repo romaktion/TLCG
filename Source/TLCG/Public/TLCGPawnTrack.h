@@ -3,13 +3,14 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "CanBeDamagerInterface.h"
 #include "TLCGPawnTrack.generated.h"
 
 class UBoxComponent;
 class USceneComponent;
 
 UCLASS(Abstract)
-class TLCG_API ATLCGPawnTrack : public AActor
+class TLCG_API ATLCGPawnTrack : public AActor, public ICanBeDamagerInterface
 {
 	GENERATED_UCLASS_BODY()
 	

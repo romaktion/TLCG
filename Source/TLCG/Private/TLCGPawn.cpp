@@ -17,7 +17,10 @@
 ATLCGPawn::ATLCGPawn(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 , TrackClass(nullptr)
 , InitialTracksPoolSize(100)
+, DisableSpawnTracks(false)
 , StartTransform(FTransform::Identity)
+, AvaibleSkillsAmount(3)
+, SkillLocked(false)
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -166,6 +169,11 @@ void ATLCGPawn::StopBattle()
 		TLCMovement->Deactivate();
 }
 
+void ATLCGPawn::UnlockSkill()
+{
+	SkillLocked = false;
+}
+
 void ATLCGPawn::TurnLeft()
 {
 	ServerTurnLeft();
@@ -214,14 +222,19 @@ void ATLCGPawn::Skill()
 		ServerSkill();
 }
 
-void ATLCGPawn::MulticastSkill_Implementation()
+void ATLCGPawn::MulticastSkill_Implementation(int32 InAvaibleSkillsAmount)
 {
-	K2_ActivateSkill();
+	K2_ActivateSkill(InAvaibleSkillsAmount);
 }
 
 void ATLCGPawn::ServerSkill_Implementation()
 {
-	MulticastSkill();
+	if (!SkillLocked && AvaibleSkillsAmount > 0)
+	{
+		SkillLocked = true;
+		AvaibleSkillsAmount--;
+		MulticastSkill(AvaibleSkillsAmount);
+	}
 }
 
 bool ATLCGPawn::ServerSkill_Validate()
@@ -231,6 +244,9 @@ bool ATLCGPawn::ServerSkill_Validate()
 
 void ATLCGPawn::OnKilled(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	if (!OtherActor || !Cast<ICanBeDamagerInterface>(OtherActor))
+		return;
+
 	auto PS = Cast<ATLCGPlayerState>(GetPlayerState());
 
 	if (!PS)
@@ -320,7 +336,7 @@ void ATLCGPawn::MulticastOnRespawn_Implementation()
 
 ATLCGPawnTrack* ATLCGPawn::SpawnTrack()
 {
-	if (Role == ROLE_Authority)
+	if (!DisableSpawnTracks && Role == ROLE_Authority)
 	{
 		auto SpawnedTrack = TracksPool.Pop();
 		if (SpawnedTrack)

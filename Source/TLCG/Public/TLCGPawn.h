@@ -4,6 +4,7 @@
 
 #include "GameFramework/Pawn.h"
 #include "TLCGBattleInterface.h"
+#include "CanBeDamagerInterface.h"
 #include "TLCGPawn.generated.h"
 
 class UTLCGMovement;
@@ -11,7 +12,7 @@ class UBoxComponent;
 class ATLCGPawnTrack;
 
 UCLASS(Abstract)
-class TLCG_API ATLCGPawn : public APawn, public ITLCGBattleInterface
+class TLCG_API ATLCGPawn : public APawn, public ITLCGBattleInterface, public ICanBeDamagerInterface
 {
 	GENERATED_UCLASS_BODY()
 
@@ -47,10 +48,13 @@ public:
 	void K2_OnRotate();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "TLCGPawn", DisplayName = "ActivateSkill")
-	void K2_ActivateSkill();
+	void K2_ActivateSkill(int32 NewAvaibleSkillsAmount);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnRespawn();
+
+	UFUNCTION(BlueprintCallable, Category = "TLCGPawn")
+	void UnlockSkill();
 
 	UPROPERTY(Category="TLCGPawn", VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess = "true"))
 	UBoxComponent* BoxComponent;
@@ -65,6 +69,9 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "TLCGPawn")
 	FLinearColor Color;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TLCGPawn")
+	bool DisableSpawnTracks;
 
 private:
 	UFUNCTION()
@@ -86,7 +93,7 @@ private:
 	void ServerSkill();
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastSkill();
+	void MulticastSkill(int32 InAvaibleSkillsAmount);
 
 	TArray<ATLCGPawnTrack*> TracksPool;
 
@@ -121,4 +128,10 @@ private:
 	ATLCGPawnTrack* SpawnTrack();
 
 	FTransform StartTransform;
+
+	UPROPERTY(EditDefaultsOnly)
+	int32 AvaibleSkillsAmount;
+
+	bool SkillLocked;
+
 };
