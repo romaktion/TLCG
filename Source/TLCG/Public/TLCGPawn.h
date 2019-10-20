@@ -23,6 +23,8 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void PossessedBy(AController* NewController) override;
+
 	virtual void Tick(float DeltaSeconds) override;
 
 	virtual void StartBattle() override;
@@ -44,19 +46,24 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "TLCGPawn", DisplayName = "OnRotate")
 	void K2_OnRotate();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "TLCGPawn", DisplayName = "ActivateSkill")
+	void K2_ActivateSkill();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastOnRespawn();
+
 	UPROPERTY(Category="TLCGPawn", VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess = "true"))
 	UBoxComponent* BoxComponent;
 
 	UPROPERTY(Category="TLCGPawn", VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess = "true"))
 	UTLCGMovement* TLCMovement;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Track")
 	TSubclassOf<ATLCGPawnTrack> TrackClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Track")
 	uint32 InitialTracksPoolSize;
 
-	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "TLCGPawn")
 	FLinearColor Color;
 
 private:
@@ -74,6 +81,12 @@ private:
 
 	UFUNCTION()
 	void Skill();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerSkill();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSkill();
 
 	TArray<ATLCGPawnTrack*> TracksPool;
 
@@ -95,9 +108,6 @@ protected:
 private:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnKilled();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastOnRespawn();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnMoveActivated();

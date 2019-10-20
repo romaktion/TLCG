@@ -53,6 +53,10 @@ void ATLCGPawn::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	auto World = GetWorld();
+	if (!World)
+		return;
+
 	if (TLCMovement)
 	{
 		TLCMovement->OnRotate.AddUniqueDynamic(this, &ATLCGPawn::OnRotate);
@@ -68,8 +72,6 @@ void ATLCGPawn::BeginPlay()
 			TLCMovement->OnComponentActivated.AddUniqueDynamic(this, &ATLCGPawn::OnMoveActivated);
 			TLCMovement->OnComponentDeactivated.AddUniqueDynamic(this, &ATLCGPawn::OnMoveDeactivated);
 		}
-
-		auto World = GetWorld();
 
 		if (World && TrackClass && InitialTracksPoolSize > 0 && BoxComponent)
 		{
@@ -91,6 +93,12 @@ void ATLCGPawn::BeginPlay()
 			}
 		}
 	}
+
+	auto PC = Cast<ATLCGPlayerController>(GetController());
+	if (PC && PC->IsLocalPlayerController())
+	{
+		PC->ServerAllowStartRound();
+	}
 }
 
 // Called to bind functionality to input
@@ -101,6 +109,17 @@ void ATLCGPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	PlayerInputComponent->BindAction("TurnLeft", IE_Pressed, this, &ATLCGPawn::TurnLeft);
 	PlayerInputComponent->BindAction("TurnRight", IE_Pressed, this, &ATLCGPawn::TurnRight);
 	PlayerInputComponent->BindAction("Skill", IE_Pressed, this, &ATLCGPawn::Skill);
+}
+
+void ATLCGPawn::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	auto PC = Cast<ATLCGPlayerController>(NewController);
+	if (PC && PC->IsLocalPlayerController())
+	{
+		PC->ServerAllowStartRound();
+	}
 }
 
 void ATLCGPawn::Tick(float DeltaSeconds)
@@ -191,7 +210,23 @@ bool ATLCGPawn::ServerTurnLRight_Validate()
 
 void ATLCGPawn::Skill()
 {
-	//
+	if (TLCMovement && TLCMovement->IsActive())
+		ServerSkill();
+}
+
+void ATLCGPawn::MulticastSkill_Implementation()
+{
+	K2_ActivateSkill();
+}
+
+void ATLCGPawn::ServerSkill_Implementation()
+{
+	MulticastSkill();
+}
+
+bool ATLCGPawn::ServerSkill_Validate()
+{
+	return true;
 }
 
 void ATLCGPawn::OnKilled(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
@@ -209,6 +244,9 @@ void ATLCGPawn::OnKilled(UPrimitiveComponent* HitComponent, AActor* OtherActor, 
 	if (TLCMovement)
 		TLCMovement->Deactivate();
 
+	if (BoxComponent)
+		BoxComponent->MoveIgnoreActors.Empty();
+
 	PS->OnPlayerKilled.Broadcast(this);
 
 	MulticastOnKilled();
@@ -216,18 +254,11 @@ void ATLCGPawn::OnKilled(UPrimitiveComponent* HitComponent, AActor* OtherActor, 
 
 void ATLCGPawn::OnMoveActivated(UActorComponent* Component, bool bReset)
 {
-	auto SpawnedTrack = SpawnTrack();
-
-	FRepData RepData = StartTransform.Equals(FTransform::Identity) ?
-		FRepData(GetActorLocation(), GetActorRotation().Yaw, SpawnTrack()) :
-		FRepData(StartTransform.GetLocation(), StartTransform.GetRotation().Rotator().Yaw, SpawnedTrack);
-
 	if (TLCMovement)
 	{
-		TLCMovement->SetRepData(FRepData(RepData));
+		TLCMovement->SetRepData(FRepData(GetActorLocation(), GetActorRotation().Yaw, SpawnTrack()));
 	}
 
-	MulticastOnRespawn();
 	MulticastOnMoveActivated();
 }
 
@@ -237,9 +268,6 @@ void ATLCGPawn::OnMoveDeactivated(UActorComponent* Component)
 	{
 		TLCMovement->SetRepData(FRepData(GetActorLocation(), GetActorRotation().Yaw, nullptr));
 	}
-
-	if (BoxComponent)
-		BoxComponent->MoveIgnoreActors.Empty();
 
 	MulticastOnMoveDeactivated();
 }
@@ -279,6 +307,11 @@ void ATLCGPawn::OnRotate(const FTransform& NewTransform, ATLCGPawnTrack* NewTrac
 
 void ATLCGPawn::MulticastOnRespawn_Implementation()
 {
+	if (TLCMovement && Role == ROLE_Authority)
+	{
+		TLCMovement->SetRepData(FRepData(StartTransform.GetLocation(), StartTransform.GetRotation().Rotator().Yaw, nullptr));
+	}
+
 	SetActorEnableCollision(true);
 	SetActorHiddenInGame(false);
 

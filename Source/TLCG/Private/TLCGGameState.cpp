@@ -9,11 +9,15 @@
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "TLCGGameInstance.h"
+#include "TLCGGameMode.h"
+#include "TLCGPawn.h"
 
 ATLCGGameState::ATLCGGameState(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 , ScoreToWin(3)
-, RoundNumber(-1)
+, RoundNumber(0)
+, CountReadyToPlayPlayers(0)
 , GameState(EGameStateEnum::GS_GameNotStarted)
+, RountPreparationDelay(3.f)
 {
 
 }
@@ -147,9 +151,34 @@ void ATLCGGameState::StartGame(TArray<APlayerController*> InPlayerControllers)
 
 void ATLCGGameState::StartRound()
 {
+	auto World = GetWorld();
+	if (!World)
+		return;
+
 	GameState = EGameStateEnum::GS_RoundPreparation;
 
-	GetWorldTimerManager().SetTimer(StartRoundTimerHandle, this, &ATLCGGameState::PerformStartRound, 3.f);
+	GetWorldTimerManager().SetTimer(TryStartRoundTimerHandle, this, &ATLCGGameState::TryPerformStartRound, World->GetDeltaSeconds(), true);
+}
+
+FPlayerData ATLCGGameState::GetAvailableColor() const
+{
+	ensureMsgf(Colors.Num() > 0, TEXT("Colors array are empty!"));
+
+	FPlayerData Color;
+
+	if (Colors.Num() > 0)
+	{
+		auto Rnd = FMath::RandRange(0, Colors.Num() - 1);
+		Color = Colors[Rnd];
+		Colors.RemoveAt(Rnd);
+	}
+
+	return Color;
+}
+
+void ATLCGGameState::MulticastOnRoundPreparation_Implementation()
+{
+	OnRoundPreparation.Broadcast(RountPreparationDelay);
 }
 
 void ATLCGGameState::MulticastOnRoundStart_Implementation(int32 NewRoundNumber)
@@ -167,6 +196,24 @@ void ATLCGGameState::MulticastOnRoundOver_Implementation(int32 InPlayerNumber, f
 	OnRoundOver.Broadcast(InPlayerNumber, InScore);
 }
 
+void ATLCGGameState::TryPerformStartRound()
+{
+	auto World = GetWorld();
+	if (!World)
+		return;
+
+	auto GM = World->GetAuthGameMode<ATLCGGameMode>();
+	if (!GM)
+		return;
+
+	if (CountReadyToPlayPlayers == GM->GetPlayersToStart())
+	{
+		GetWorldTimerManager().ClearTimer(TryStartRoundTimerHandle);
+		GetWorldTimerManager().SetTimer(StartRoundTimerHandle, this, &ATLCGGameState::PerformStartRound, RountPreparationDelay);
+		MulticastOnRoundPreparation();
+	}
+}
+
 void ATLCGGameState::PerformStartRound()
 {
 	auto World = GetWorld();
@@ -181,12 +228,25 @@ void ATLCGGameState::PerformStartRound()
 	{
 		if (Iterator->IsValid())
 		{
-			auto PlayerState = Cast<ATLCGPlayerState>(Iterator->Get()->PlayerState);
-			if (PlayerState)
+			CountPlayers++;
+
+			//Respawn pawns
+			if (RoundNumber > 1)
 			{
-				CountPlayers++;
-				PlayerState->SetPlayerState(EPlayerStateEnum::PS_Alive);
+				auto PlayerState = Cast<ATLCGPlayerState>(Iterator->Get()->PlayerState);
+				if (PlayerState)
+				{
+
+					PlayerState->SetPlayerState(EPlayerStateEnum::PS_Alive);
+				}
+
+				auto Pawn = Cast<ATLCGPawn>(Iterator->Get()->GetPawn());
+				if (Pawn)
+				{
+					Pawn->MulticastOnRespawn();
+				}
 			}
+
 		}
 	}
 

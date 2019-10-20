@@ -6,8 +6,11 @@
 #include "TLCGGameInstance.h"
 #include "TLCGPlayerState.h"
 #include "TimerManager.h"
+#include "Engine/World.h"
+#include "TLCGGameState.h"
 
 ATLCGPlayerController::ATLCGPlayerController(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+, StartSpot(nullptr)
 {
 
 }
@@ -37,4 +40,50 @@ void ATLCGPlayerController::MulticastGoToMainMenu_Implementation(bool Win, const
 void ATLCGPlayerController::PerformClientTravel(const FString& Path)
 {
 	ClientTravel(Path, ETravelType::TRAVEL_Absolute);
+}
+
+void ATLCGPlayerController::ServerAllowStartRound_Implementation()
+{
+	auto World = GetWorld();
+	if (!World)
+		return;
+	auto GS = World->GetGameState<ATLCGGameState>();
+	if (!GS)
+		return;
+	GS->CountReadyToPlayPlayers++;
+}
+
+bool ATLCGPlayerController::ServerAllowStartRound_Validate()
+{
+	return true;
+}
+
+void ATLCGPlayerController::ServerSpawnPawn_Implementation(const FString& ClassPath)
+{
+	if (!StartSpot)
+		return;
+	auto World = GetWorld();
+	if (!World)
+		return;
+	auto GM = World->GetAuthGameMode();
+	if (!GM)
+		return;
+	auto GS = World->GetGameState<ATLCGGameState>();
+	if (!GS)
+		return;
+
+	auto PS = GetPlayerState<ATLCGPlayerState>();
+	if (!PS)
+		return;
+
+	UObject* ClassPackage = ANY_PACKAGE;
+	PS->PlayerPawnClass = (UClass*)StaticLoadObject(UClass::StaticClass(), nullptr, *ClassPath);
+	PS->PlayerData = GS->GetAvailableColor();
+
+	GM->RestartPlayerAtPlayerStart(this, StartSpot);
+}
+
+bool ATLCGPlayerController::ServerSpawnPawn_Validate(const FString& ClassPath)
+{
+	return true;
 }

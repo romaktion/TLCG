@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/PlayerState.h"
+#include "TLCGGameState.h"
 #include "TLCGPlayerState.generated.h"
 
 class ATLCGPawn;
@@ -35,6 +36,9 @@ public:
 
 	UPROPERTY(Replicated)
 	TSubclassOf<ATLCGPawn> PlayerPawnClass;
+
+	UPROPERTY(Replicated)
+	FPlayerData PlayerData;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	int32 PlayerNumber;

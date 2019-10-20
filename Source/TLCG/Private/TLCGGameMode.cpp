@@ -109,6 +109,48 @@ FString ATLCGGameMode::InitNewPlayer(APlayerController* NewPlayerController, con
 	return Super::InitNewPlayer(NewPlayerController, UniqueId, OptionsCopy, Portal);
 }
 
+void ATLCGGameMode::RestartPlayerAtPlayerStart(AController* NewPlayer, AActor* StartSpot)
+{
+	//DeferredSpawn
+	auto PC = Cast<ATLCGPlayerController>(NewPlayer);
+	if (PC)
+	{
+		if (!PC->StartSpot)
+		{
+			PC->StartSpot = StartSpot;
+
+			return;
+		}
+	}
+
+	Super::RestartPlayerAtPlayerStart(NewPlayer, StartSpot);
+}
+
+APawn* ATLCGGameMode::SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform)
+{
+	FActorSpawnParameters SpawnInfo;
+	SpawnInfo.Instigator = Instigator;
+	SpawnInfo.ObjectFlags |= RF_Transient;	// We never want to save default player pawns into a map
+	UClass* PawnClass = GetDefaultPawnClassForController(NewPlayer);
+	APawn* ResultPawn = GetWorld()->SpawnActorDeferred<APawn>(PawnClass, SpawnTransform, SpawnInfo.Owner, SpawnInfo.Instigator, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!ResultPawn)
+	{
+		UE_LOG(LogGameMode, Warning, TEXT("SpawnDefaultPawnAtTransform: Couldn't spawn Pawn of type %s at %s"), *GetNameSafe(PawnClass), *SpawnTransform.ToHumanReadableString());
+	}
+	auto Pawn = Cast<ATLCGPawn>(ResultPawn);
+	auto PS = NewPlayer->GetPlayerState<ATLCGPlayerState>();
+
+	if (Pawn && PS)
+	{
+		Pawn->Color = PS->PlayerData.Color;
+		Pawn->TrackClass = PS->PlayerData.PawnTrackClass;
+	}
+
+	UGameplayStatics::FinishSpawningActor(ResultPawn, SpawnTransform);
+
+	return ResultPawn;
+}
+
 AActor* ATLCGGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
 	for (TActorIterator<APlayerStart> ActorItr(GetWorld()); ActorItr; ++ActorItr)

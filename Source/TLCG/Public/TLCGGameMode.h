@@ -14,11 +14,19 @@ class TLCG_API ATLCGGameMode : public AGameModeBase
 {
 	GENERATED_UCLASS_BODY()
 	
+public:
 	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 
-	virtual FString	InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;
-
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+	virtual void RestartPlayerAtPlayerStart(AController* NewPlayer, AActor* StartSpot);
+
+	int32 GetPlayersToStart() const {return PlayersToStart; }
+
+	APawn* SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform) override;
+
+protected:
+	virtual FString	InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal = TEXT("")) override;
 
 private:
 	UFUNCTION()

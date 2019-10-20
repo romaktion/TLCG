@@ -22,4 +22,12 @@ class TLCG_API ATLCGPlayerController : public APlayerController
 	UFUNCTION(BlueprintCallable, Category = "UserInterface")
 	void PerformClientTravel(const FString& Path);
 
+	UFUNCTION(BlueprintCallable, Server, Reliable, WithValidation, Category = "TLCGPlayerController", DisplayName = "SpawnPawn")
+	void ServerSpawnPawn(const FString& ClassPath);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerAllowStartRound();
+
+	AActor* StartSpot;
+
 };

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/GameStateBase.h"
+#include "TLCGPawnTrack.h"
 #include "TLCGGameState.generated.h"
 
 class APlayerState;
@@ -11,6 +12,7 @@ class ATLCGPawn;
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_TwoParams(FOnRoundOverSignature, ATLCGGameState, OnRoundOver, int32, PlayerNumber, float, Score);
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnInitNewPlayerSignature, ATLCGGameState, OnInitNewPlayer, APlayerState*, NewPlayer);
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnRoundStartSignature, ATLCGGameState, OnRoundStart, int32, NewRoundNumber);
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnRoundPreparationSignature, ATLCGGameState, OnRoundPreparation, int32, Delay);
 
 
 UENUM(BlueprintType)
@@ -25,6 +27,31 @@ enum class EGameStateEnum : uint8
 	GS_GameOver 				UMETA(DisplayName = "GameOver")
 };
 
+USTRUCT(BlueprintType)
+struct FPlayerData
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(EditDefaultsOnly)
+	FLinearColor Color;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<ATLCGPawnTrack> PawnTrackClass;
+
+	FPlayerData()
+	{
+		Color = FLinearColor();
+		PawnTrackClass = nullptr;
+	}
+
+	FPlayerData(const FLinearColor& InColor, TSubclassOf<ATLCGPawnTrack> InPawnTrackClass)
+	{
+		Color = InColor;
+		PawnTrackClass = InPawnTrackClass;
+	}
+};
 
 USTRUCT()
 struct FLeaderBoard
@@ -77,7 +104,12 @@ public:
 	void MulticastOnRoundStart(int32 NewRoundNumber);
 
 	UFUNCTION(NetMulticast, Reliable)
+	void MulticastOnRoundPreparation();
+
+	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnInitPlayer(APlayerState* NewPlayer);
+
+	FPlayerData GetAvailableColor() const;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int32 ScoreToWin;
@@ -91,6 +123,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "TLCHGame")
 	FOnInitNewPlayerSignature OnInitNewPlayer;
 
+	UPROPERTY(BlueprintAssignable, Category = "TLCHGame")
+	FOnRoundPreparationSignature OnRoundPreparation;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TArray<APlayerController*> PlayerControllers;
 
@@ -100,7 +135,12 @@ public:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	int32 RoundNumber;
 
+	uint32 CountReadyToPlayPlayers;
+
 private:
+	UFUNCTION()
+	void TryPerformStartRound();
+
 	UFUNCTION()
 	void PerformStartRound();
 
@@ -112,7 +152,15 @@ private:
 	UPROPERTY(Replicated)
 	EGameStateEnum GameState;
 
+	FTimerHandle TryStartRoundTimerHandle;
+
 	FTimerHandle StartRoundTimerHandle;
 
 	FTimerHandle GameOverTimerHandle;
+
+	UPROPERTY(EditDefaultsOnly)
+	float RountPreparationDelay;
+
+	UPROPERTY(EditDefaultsOnly)
+	mutable TArray<FPlayerData> Colors;
 };

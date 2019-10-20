@@ -60,6 +60,9 @@ void ATLCGPlayerState::OnInitPlayerTimer()
 		if (!GS)
 			return;
 
+		if (!GetPawn())
+			return;
+
 		if (Role < ROLE_Authority)
 			GS->MulticastOnInitPlayer_Implementation(this);
 		else
