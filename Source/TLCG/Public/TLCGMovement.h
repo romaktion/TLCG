@@ -45,6 +45,7 @@ class TLCG_API UTLCGMovement : public UFloatingPawnMovement
 {
 	GENERATED_UCLASS_BODY()
 	
+public:
 	virtual void BeginPlay() override;
 
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
@@ -56,6 +57,8 @@ class TLCG_API UTLCGMovement : public UFloatingPawnMovement
 	void SetRepData(const FRepData& NewRepData);
 
 	const FRepData& GetRepData() const;
+
+	virtual void Activate(bool bReset=false) override;
 
 	UPROPERTY()
 	FOnRotateSignature OnRotate;

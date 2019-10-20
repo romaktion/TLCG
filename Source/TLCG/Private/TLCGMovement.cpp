@@ -4,6 +4,8 @@
 #include "TLCGMovement.h"
 #include "UnrealNetwork.h"
 #include "TLCGPawnTrack.h"
+#include "TLCGPawn.h"
+#include "TLCGPlayerState.h"
 
 UTLCGMovement::UTLCGMovement(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 , CachedOwner(nullptr)
@@ -58,6 +60,14 @@ void UTLCGMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, FAc
 
 void UTLCGMovement::TurnRight(ATLCGPawnTrack* NewTrack)
 {
+	auto Pawn = Cast<ATLCGPawn>(GetOwner());
+	if (!Pawn)
+		return;
+
+	auto PS = Pawn->GetPlayerState<ATLCGPlayerState>();
+	if (!PS || PS->GetPlayerState() == EPlayerStateEnum::PS_Killed)
+		return;
+
 	if (CachedOwner->Role == ROLE_Authority)
 	{
 		CachedOwner->AddActorWorldRotation(FQuat(FRotator(0.f, 90.f, 0.f)));
@@ -68,6 +78,14 @@ void UTLCGMovement::TurnRight(ATLCGPawnTrack* NewTrack)
 
 void UTLCGMovement::TurnLeft(ATLCGPawnTrack* NewTrack)
 {
+	auto Pawn = Cast<ATLCGPawn>(GetOwner());
+	if (!Pawn)
+		return;
+
+	auto PS = Pawn->GetPlayerState<ATLCGPlayerState>();
+	if (!PS || PS->GetPlayerState() == EPlayerStateEnum::PS_Killed)
+		return;
+
 	if (CachedOwner->Role == ROLE_Authority)
 	{
 		CachedOwner->AddActorWorldRotation(FQuat(FRotator(0.f, -90.f, 0.f)));
@@ -89,6 +107,19 @@ void UTLCGMovement::SetRepData(const FRepData& NewRepData)
 const FRepData& UTLCGMovement::GetRepData() const
 {
 	return RepData;
+}
+
+void UTLCGMovement::Activate(bool bReset/*=false*/)
+{
+	auto Pawn = Cast<ATLCGPawn>(GetOwner());
+	if (!Pawn)
+		return;
+
+	auto PS = Pawn->GetPlayerState<ATLCGPlayerState>();
+	if (!PS || PS->GetPlayerState() == EPlayerStateEnum::PS_Killed)
+		return;
+
+	Super::Activate(bReset);
 }
 
 void UTLCGMovement::OnRep_RepData(FRepData OldData)

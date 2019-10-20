@@ -186,8 +186,10 @@ void ATLCGPawn::TurnRight()
 
 void ATLCGPawn::ServerTurnLeft_Implementation()
 {
-	if (TLCMovement && TLCMovement->IsActive())
+	if (TLCMovement && TLCMovement->IsActive() && (LastLeftLocation - GetActorLocation()).Size() > (BoxComponent->GetScaledBoxExtent().Y * 2))
 	{
+		LastLeftLocation = GetActorLocation();
+
 		auto SpawnedTrack = SpawnTrack();
 
 		TLCMovement->TurnLeft(SpawnedTrack);
@@ -202,8 +204,10 @@ bool ATLCGPawn::ServerTurnLeft_Validate()
 
 void ATLCGPawn::ServerTurnLRight_Implementation()
 {
-	if (TLCMovement && TLCMovement->IsActive())
+	if (TLCMovement && TLCMovement->IsActive() && (LastRightLocataion - GetActorLocation()).Size() > (BoxComponent->GetScaledBoxExtent().Y * 2))
 	{
+		LastRightLocataion = GetActorLocation();
+
 		auto SpawnedTrack = SpawnTrack();
 
 		TLCMovement->TurnRight(SpawnedTrack);
@@ -244,28 +248,28 @@ bool ATLCGPawn::ServerSkill_Validate()
 
 void ATLCGPawn::OnKilled(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (!OtherActor || !Cast<ICanBeDamagerInterface>(OtherActor))
-		return;
+	if (OtherActor && (Cast<ICanBeDamagerInterface>(OtherActor) || OtherActor->ActorHasTag("Damager")))
+	{
+		auto PS = Cast<ATLCGPlayerState>(GetPlayerState());
 
-	auto PS = Cast<ATLCGPlayerState>(GetPlayerState());
+		if (!PS)
+			return;
 
-	if (!PS)
-		return;
+		if (PS->GetPlayerState() == EPlayerStateEnum::PS_Killed)
+			return;
 
-	if (PS->GetPlayerState() == EPlayerStateEnum::PS_Killed)
-		return;
+		PS->SetPlayerState(EPlayerStateEnum::PS_Killed);
 
-	PS->SetPlayerState(EPlayerStateEnum::PS_Killed);
+		if (TLCMovement)
+			TLCMovement->Deactivate();
 
-	if (TLCMovement)
-		TLCMovement->Deactivate();
+		if (BoxComponent)
+			BoxComponent->MoveIgnoreActors.Empty();
 
-	if (BoxComponent)
-		BoxComponent->MoveIgnoreActors.Empty();
+		PS->OnPlayerKilled.Broadcast(this);
 
-	PS->OnPlayerKilled.Broadcast(this);
-
-	MulticastOnKilled();
+		MulticastOnKilled();
+	}
 }
 
 void ATLCGPawn::OnMoveActivated(UActorComponent* Component, bool bReset)
@@ -325,6 +329,9 @@ void ATLCGPawn::MulticastOnRespawn_Implementation()
 {
 	if (TLCMovement && Role == ROLE_Authority)
 	{
+		LastLeftLocation = GetActorLocation();
+		LastRightLocataion = GetActorLocation();
+
 		TLCMovement->SetRepData(FRepData(StartTransform.GetLocation(), StartTransform.GetRotation().Rotator().Yaw, nullptr));
 	}
 

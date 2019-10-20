@@ -134,4 +134,8 @@ private:
 
 	bool SkillLocked;
 
+	FVector LastRightLocataion;
+
+	FVector LastLeftLocation;
+
 };
