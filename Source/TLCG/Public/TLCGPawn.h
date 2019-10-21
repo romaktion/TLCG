@@ -154,6 +154,11 @@ private:
 
 	void Swipe(ESwipeDirection Dir);
 
+	UFUNCTION()
+	void InitPlayerTimer();
+
+	FTimerHandle InitPlayerTimerHandle;
+
 	bool SkillLocked;
 
 	FVector LastRightLocataion;

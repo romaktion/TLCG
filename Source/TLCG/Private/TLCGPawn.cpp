@@ -11,6 +11,7 @@
 #include "TLCGPlayerController.h"
 #include "TLCGPlayerState.h"
 #include "TLCGGameState.h"
+#include "TimerManager.h"
 
 
 // Sets default values
@@ -102,6 +103,16 @@ void ATLCGPawn::BeginPlay()
 	if (PC && PC->IsLocalPlayerController())
 	{
 		PC->ServerAllowStartRound();
+	}
+
+	auto PS = GetPlayerState<ATLCGPlayerState>();
+	if (PS)
+	{
+		PS->InitPlayer();
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(InitPlayerTimerHandle, this, &ATLCGPawn::InitPlayerTimer, World->IsEditorWorld() ? 0.01f : World->GetDeltaSeconds());
 	}
 }
 
@@ -239,7 +250,8 @@ void ATLCGPawn::TurnRight()
 
 void ATLCGPawn::ServerTurnLeft_Implementation()
 {
-	if (TLCMovement && TLCMovement->IsActive() && (LastLeftLocation - GetActorLocation()).Size() > (BoxComponent->GetScaledBoxExtent().Y * 2))
+	if (TLCMovement && TLCMovement->IsActive()
+		&& (LastLeftLocation - GetActorLocation()).Size() > (BoxComponent->GetScaledBoxExtent().Y * 2))
 	{
 		LastLeftLocation = GetActorLocation();
 
@@ -257,7 +269,8 @@ bool ATLCGPawn::ServerTurnLeft_Validate()
 
 void ATLCGPawn::ServerTurnRight_Implementation()
 {
-	if (TLCMovement && TLCMovement->IsActive() && (LastRightLocataion - GetActorLocation()).Size() > (BoxComponent->GetScaledBoxExtent().Y * 2))
+	if (TLCMovement && TLCMovement->IsActive()
+		&& (LastRightLocataion - GetActorLocation()).Size() > (BoxComponent->GetScaledBoxExtent().Y * 2))
 	{
 		LastRightLocataion = GetActorLocation();
 
@@ -275,8 +288,7 @@ bool ATLCGPawn::ServerTurnRight_Validate()
 
 void ATLCGPawn::Skill()
 {
-	if (TLCMovement && TLCMovement->IsActive())
-		ServerSkill();
+	ServerSkill();
 }
 
 void ATLCGPawn::Touch()
@@ -309,7 +321,15 @@ void ATLCGPawn::MulticastSkill_Implementation(APlayerState* Player, int32 InAvai
 
 void ATLCGPawn::ServerSkill_Implementation()
 {
-	if (!SkillLocked && AvaibleSkillsAmount > 0)
+	auto World = GetWorld();
+	if (!World)
+		return;
+	auto GS = World->GetGameState<ATLCGGameState>();
+	if (!GS)
+		return;
+
+	if (TLCMovement && TLCMovement->IsActive() && !SkillLocked && AvaibleSkillsAmount > 0
+		&& GS->GetGameState() == EGameStateEnum::GS_RoundInProgress)
 	{
 		SkillLocked = true;
 		AvaibleSkillsAmount--;
@@ -489,6 +509,23 @@ void ATLCGPawn::Swipe(ESwipeDirection Dir)
 		else if (Dir == ESwipeDirection::SD_Down)
 		{
 			ServerTurnLeft();
+		}
+	}
+}
+
+void ATLCGPawn::InitPlayerTimer()
+{
+	auto PS = GetPlayerState<ATLCGPlayerState>();
+	if (PS)
+	{
+		PS->InitPlayer();
+	}
+	else
+	{
+		auto World = GetWorld();
+		if (World)
+		{
+			GetWorldTimerManager().SetTimer(InitPlayerTimerHandle, this, &ATLCGPawn::InitPlayerTimer, World->IsEditorWorld() ? 0.01f : World->GetDeltaSeconds());
 		}
 	}
 }

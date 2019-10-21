@@ -34,6 +34,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PlayerState")
 	void SetPlayerState(EPlayerStateEnum NewPlayerState);
 
+	void InitPlayer();
+
 	UPROPERTY(Replicated)
 	TSubclassOf<ATLCGPawn> PlayerPawnClass;
 

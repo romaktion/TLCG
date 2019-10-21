@@ -37,6 +37,15 @@ void ATLCGPlayerState::SetPlayerState(EPlayerStateEnum NewPlayerState)
 		PlayerState = NewPlayerState;
 }
 
+void ATLCGPlayerState::InitPlayer()
+{
+	auto World = GetWorld();
+	if (!World)
+		return;
+
+	GetWorldTimerManager().SetTimer(OnInitPlayerTimerHandle, this, &ATLCGPlayerState::OnInitPlayerTimer, World->IsEditorWorld() ? 0.01f : World->GetDeltaSeconds());
+}
+
 void ATLCGPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
@@ -44,30 +53,22 @@ void ATLCGPlayerState::BeginPlay()
 	auto World = GetWorld();
 	if (!World)
 		return;
-
-	GetWorldTimerManager().SetTimer(OnInitPlayerTimerHandle, this, &ATLCGPlayerState::OnInitPlayerTimer, World->GetTimeSeconds() ? World->GetTimeSeconds() : 0.1f, true);
 }
 
 void ATLCGPlayerState::OnInitPlayerTimer()
 {
-	if (PlayerNumber > -1 && !GetPlayerName().IsEmpty())
+	auto World = GetWorld();
+	auto GS = World->GetGameState<ATLCGGameState>();
+
+	if (PlayerNumber > -1 && !GetPlayerName().IsEmpty() && World && GS && GetPawn())
 	{
-		auto World = GetWorld();
-		if (!World)
-			return;
-
-		auto GS = World->GetGameState<ATLCGGameState>();
-		if (!GS)
-			return;
-
-		if (!GetPawn())
-			return;
-
 		if (Role < ROLE_Authority)
 			GS->MulticastOnInitPlayer_Implementation(this);
 		else
 			GS->MulticastOnInitPlayer(this);
-		
-		GetWorldTimerManager().ClearTimer(OnInitPlayerTimerHandle);
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(OnInitPlayerTimerHandle, this, &ATLCGPlayerState::OnInitPlayerTimer, World->IsEditorWorld() ? 0.01f : World->GetDeltaSeconds());
 	}
 }
