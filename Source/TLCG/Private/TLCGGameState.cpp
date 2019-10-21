@@ -17,9 +17,16 @@ ATLCGGameState::ATLCGGameState(const FObjectInitializer& ObjectInitializer) : Su
 , RoundNumber(0)
 , CountReadyToPlayPlayers(0)
 , GameState(EGameStateEnum::GS_GameNotStarted)
-, RountPreparationDelay(3.f)
+, RoundStartDelay(3.f)
 {
 
+}
+
+void ATLCGGameState::BeginPlay()
+{
+	Super::BeginPlay();
+
+	ColorsReserve = Colors;
 }
 
 void ATLCGGameState::PerformRoundOver(APlayerController* AlivePlayer)
@@ -44,7 +51,7 @@ void ATLCGGameState::PerformRoundOver(APlayerController* AlivePlayer)
 	else
 	{
 		//New round
-		StartRound();
+		GetWorldTimerManager().SetTimer(GameOverTimerHandle, this, &ATLCGGameState::StartRound, RoundStartDelay);
 	}
 
 	auto World = GetWorld();
@@ -74,7 +81,7 @@ void ATLCGGameState::GameOver(APlayerController* Winner)
 {
 	GameState = EGameStateEnum::GS_GameOverPreparation;
 
-	GetWorldTimerManager().SetTimer(GameOverTimerHandle, this, &ATLCGGameState::PerformGameOver, 3.f);
+	GetWorldTimerManager().SetTimer(GameOverTimerHandle, this, &ATLCGGameState::PerformGameOver, RoundStartDelay);
 }
 
 void ATLCGGameState::PerformGameOver()
@@ -157,7 +164,31 @@ void ATLCGGameState::StartRound()
 
 	GameState = EGameStateEnum::GS_RoundPreparation;
 
+	if (RoundNumber > 0)
+	{
+		CountReadyToPlayPlayers = 0;
+		for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		{
+			if (Iterator->IsValid() && Iterator->Get()->GetPawn())
+			{
+				auto Pawn = Cast<ATLCGPawn>(Iterator->Get()->GetPawn());
+				if (Pawn)
+				{
+					Pawn->ClearTracks();
+				}
+				Iterator->Get()->GetPawn()->Destroy();
+			}
+		}
+
+		MulticastOnRoundPreparation();
+	}
+
 	GetWorldTimerManager().SetTimer(TryStartRoundTimerHandle, this, &ATLCGGameState::TryPerformStartRound, World->GetDeltaSeconds(), true);
+}
+
+void ATLCGGameState::MulticastOnRoundStartTmer_Implementation()
+{
+	OnRoundStartTimer.Broadcast(RoundStartDelay);
 }
 
 FPlayerData ATLCGGameState::GetAvailableColor() const
@@ -178,7 +209,7 @@ FPlayerData ATLCGGameState::GetAvailableColor() const
 
 void ATLCGGameState::MulticastOnRoundPreparation_Implementation()
 {
-	OnRoundPreparation.Broadcast(RountPreparationDelay);
+	OnRoundPreparation.Broadcast();
 }
 
 void ATLCGGameState::MulticastOnRoundStart_Implementation(int32 NewRoundNumber)
@@ -209,8 +240,8 @@ void ATLCGGameState::TryPerformStartRound()
 	if (CountReadyToPlayPlayers == GM->GetPlayersToStart())
 	{
 		GetWorldTimerManager().ClearTimer(TryStartRoundTimerHandle);
-		GetWorldTimerManager().SetTimer(StartRoundTimerHandle, this, &ATLCGGameState::PerformStartRound, RountPreparationDelay);
-		MulticastOnRoundPreparation();
+		GetWorldTimerManager().SetTimer(StartRoundTimerHandle, this, &ATLCGGameState::PerformStartRound, RoundStartDelay);
+		MulticastOnRoundStartTmer();
 	}
 }
 

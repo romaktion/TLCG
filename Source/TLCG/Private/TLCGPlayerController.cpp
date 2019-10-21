@@ -71,14 +71,17 @@ void ATLCGPlayerController::ServerSpawnPawn_Implementation(const FString& ClassP
 	auto GS = World->GetGameState<ATLCGGameState>();
 	if (!GS)
 		return;
-
 	auto PS = GetPlayerState<ATLCGPlayerState>();
 	if (!PS)
 		return;
 
+	if (GetPawn())
+		GetPawn()->Destroy();
+
 	UObject* ClassPackage = ANY_PACKAGE;
 	PS->PlayerPawnClass = (UClass*)StaticLoadObject(UClass::StaticClass(), nullptr, *ClassPath);
-	PS->PlayerData = GS->GetAvailableColor();
+	if (!PS->PlayerData.IsValid())
+		PS->PlayerData = GS->GetAvailableColor();
 
 	GM->RestartPlayerAtPlayerStart(this, StartSpot);
 }

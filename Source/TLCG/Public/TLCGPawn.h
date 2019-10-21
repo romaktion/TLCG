@@ -7,6 +7,15 @@
 #include "CanBeDamagerInterface.h"
 #include "TLCGPawn.generated.h"
 
+UENUM(BlueprintType)
+enum class ESwipeDirection : uint8
+{
+	SD_Up			UMETA(DisplayName = "UP"),
+	SD_Down			UMETA(DisplayName = "Down"),
+	SD_Left			UMETA(DisplayName = "left"),
+	SD_Right		UMETA(DisplayName = "Right"),
+};
+
 class UTLCGMovement;
 class UBoxComponent;
 class ATLCGPawnTrack;
@@ -56,6 +65,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "TLCGPawn")
 	void UnlockSkill();
 
+	void ClearTracks();
+
 	UPROPERTY(Category="TLCGPawn", VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess = "true"))
 	UBoxComponent* BoxComponent;
 
@@ -84,10 +95,16 @@ private:
 	void ServerTurnLeft();
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerTurnLRight();
+	void ServerTurnRight();
 
 	UFUNCTION()
 	void Skill();
+
+	UFUNCTION()
+	void Touch();
+
+	UFUNCTION()
+	void UnTouch();
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerSkill();
@@ -127,7 +144,7 @@ private:
 
 	ATLCGPawnTrack* SpawnTrack();
 
-	FTransform StartTransform;
+	void Swipe(ESwipeDirection Dir);
 
 	UPROPERTY(EditDefaultsOnly)
 	int32 AvaibleSkillsAmount;
@@ -138,4 +155,10 @@ private:
 
 	FVector LastLeftLocation;
 
+	//Touch
+	bool Pressed;
+
+	FVector2D PressedLocation;
+
+	bool Swiped;
 };

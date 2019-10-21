@@ -6,6 +6,8 @@
 #include "TLCGPawnTrack.h"
 #include "TLCGPawn.h"
 #include "TLCGPlayerState.h"
+#include "TLCGGameState.h"
+#include "Engine/World.h"
 
 UTLCGMovement::UTLCGMovement(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 , CachedOwner(nullptr)
@@ -113,6 +115,17 @@ void UTLCGMovement::Activate(bool bReset/*=false*/)
 {
 	auto Pawn = Cast<ATLCGPawn>(GetOwner());
 	if (!Pawn)
+		return;
+
+	auto World = GetWorld();
+	if (!World)
+		return;
+
+	auto GS = World->GetGameState<ATLCGGameState>();
+	if (!GS)
+		return;
+
+	if (GS->GetGameState() != EGameStateEnum::GS_RoundInProgress)
 		return;
 
 	auto PS = Pawn->GetPlayerState<ATLCGPlayerState>();

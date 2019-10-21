@@ -12,7 +12,8 @@ class ATLCGPawn;
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_TwoParams(FOnRoundOverSignature, ATLCGGameState, OnRoundOver, int32, PlayerNumber, float, Score);
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnInitNewPlayerSignature, ATLCGGameState, OnInitNewPlayer, APlayerState*, NewPlayer);
 DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnRoundStartSignature, ATLCGGameState, OnRoundStart, int32, NewRoundNumber);
-DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnRoundPreparationSignature, ATLCGGameState, OnRoundPreparation, int32, Delay);
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE(FOnRoundPreparationSignature, ATLCGGameState, OnRoundPreparation);
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FOnRoundStartTimerSignature, ATLCGGameState, OnRoundStartTimer, int32, Delay);
 
 
 UENUM(BlueprintType)
@@ -44,13 +45,35 @@ public:
 	{
 		Color = FLinearColor();
 		PawnTrackClass = nullptr;
+		Valid = false;
 	}
 
 	FPlayerData(const FLinearColor& InColor, TSubclassOf<ATLCGPawnTrack> InPawnTrackClass)
 	{
 		Color = InColor;
 		PawnTrackClass = InPawnTrackClass;
+		Valid = true;
 	}
+
+	FPlayerData(const FPlayerData& NewPlayerData)
+	{
+		Color = NewPlayerData.Color;
+		PawnTrackClass = NewPlayerData.PawnTrackClass;
+		Valid = true;
+	}
+
+	FPlayerData& operator = (const FPlayerData& NewPlayerData)
+	{
+		Color = NewPlayerData.Color;
+		PawnTrackClass = NewPlayerData.PawnTrackClass;
+		Valid = true;
+		return *this;
+	}
+
+	bool IsValid() const { return Valid; }
+
+private:
+	bool Valid;
 };
 
 USTRUCT()
@@ -87,11 +110,15 @@ class TLCG_API ATLCGGameState : public AGameStateBase
 {
 	GENERATED_UCLASS_BODY()
 
+protected:
+	void BeginPlay() override;
+
 public:
 	void PerformRoundOver(APlayerController* AlivePlayer);
 
 	void StartGame(TArray<APlayerController*> InPlayerControllers);
 
+	UFUNCTION()
 	void StartRound();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "TLCHGame", DisplayName = "OnRoundOver")
@@ -107,9 +134,14 @@ public:
 	void MulticastOnRoundPreparation();
 
 	UFUNCTION(NetMulticast, Reliable)
+	void MulticastOnRoundStartTmer();
+
+	UFUNCTION(NetMulticast, Reliable)
 	void MulticastOnInitPlayer(APlayerState* NewPlayer);
 
 	FPlayerData GetAvailableColor() const;
+
+	EGameStateEnum GetGameState() const { return GameState; }
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int32 ScoreToWin;
@@ -125,6 +157,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "TLCHGame")
 	FOnRoundPreparationSignature OnRoundPreparation;
+
+	UPROPERTY(BlueprintAssignable, Category = "TLCHGame")
+	FOnRoundStartTimerSignature OnRoundStartTimer;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TArray<APlayerController*> PlayerControllers;
@@ -159,8 +194,10 @@ private:
 	FTimerHandle GameOverTimerHandle;
 
 	UPROPERTY(EditDefaultsOnly)
-	float RountPreparationDelay;
+	float RoundStartDelay;
 
 	UPROPERTY(EditDefaultsOnly)
 	mutable TArray<FPlayerData> Colors;
+
+	TArray<FPlayerData> ColorsReserve;
 };

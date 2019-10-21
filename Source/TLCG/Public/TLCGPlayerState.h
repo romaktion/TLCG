@@ -46,6 +46,8 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "TLCGPawn")
 	FOnPlayerKilledSignature OnPlayerKilled;
 
+	FTransform StartTransform;
+
 protected:
 	virtual void BeginPlay() override;
 

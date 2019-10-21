@@ -18,9 +18,10 @@ ATLCGPawn::ATLCGPawn(const FObjectInitializer& ObjectInitializer) : Super(Object
 , TrackClass(nullptr)
 , InitialTracksPoolSize(100)
 , DisableSpawnTracks(false)
-, StartTransform(FTransform::Identity)
 , AvaibleSkillsAmount(3)
 , SkillLocked(false)
+, Pressed(false)
+, Swiped(0)
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -112,6 +113,8 @@ void ATLCGPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	PlayerInputComponent->BindAction("TurnLeft", IE_Pressed, this, &ATLCGPawn::TurnLeft);
 	PlayerInputComponent->BindAction("TurnRight", IE_Pressed, this, &ATLCGPawn::TurnRight);
 	PlayerInputComponent->BindAction("Skill", IE_Pressed, this, &ATLCGPawn::Skill);
+	PlayerInputComponent->BindAction("Touch1", IE_Pressed, this, &ATLCGPawn::Touch);
+	PlayerInputComponent->BindAction("Touch1", IE_Released, this, &ATLCGPawn::UnTouch);
 }
 
 void ATLCGPawn::PossessedBy(AController* NewController)
@@ -136,27 +139,59 @@ void ATLCGPawn::Tick(float DeltaSeconds)
 		TLCMovement->GetRepData().Track->AddActorWorldOffset(TLCMovement->GetRepData().Track->GetActorForwardVector() * (Speed * 0.5f), true);
 		TLCMovement->GetRepData().Track->SetActorScale3D(FVector(TLCMovement->GetRepData().Track->GetActorScale3D().X + Speed * 0.05f, TLCMovement->GetRepData().Track->GetActorScale3D().Y, TLCMovement->GetRepData().Track->GetActorScale3D().Z));
 	}
+
+	if (Pressed && !Swiped)
+	{
+		auto PC = GetController<APlayerController>();
+		if (PC)
+		{
+			FVector2D Location;
+			bool IsCurrentlyPressed;
+
+			PC->GetInputTouchState(ETouchIndex::Touch1, Location.X, Location.Y, IsCurrentlyPressed);
+			if ((Location - PressedLocation).Size() > 100)
+			{
+				Swiped = true;
+				if (FMath::Abs((PressedLocation - Location).X) > FMath::Abs((PressedLocation - Location).Y))
+				{
+					if ((PressedLocation - Location).X > 0)
+					{
+						Swipe(ESwipeDirection::SD_Left);
+					}
+					else
+					{
+						Swipe(ESwipeDirection::SD_Right);
+					}
+				}
+				else
+				{
+					if ((PressedLocation - Location).Y > 0)
+					{
+						Swipe(ESwipeDirection::SD_Up);
+					}
+					else
+					{
+						Swipe(ESwipeDirection::SD_Down);
+					}
+				}
+			}
+		}
+	}
 }
 
 void ATLCGPawn::StartBattle()
 {
 	if (Role == ROLE_Authority && TLCMovement)
 	{
-		if (SpawnedTracks.Num() > 0)
-		{
-			for (auto &ST : SpawnedTracks)
-			{
-				ST->MulticastEnable(false);
-				TracksPool.Push(ST);
-				ST = nullptr;
-			}
-
-			SpawnedTracks.RemoveAll([](auto ST) { return !ST; });
-		}
+		ClearTracks();
 		
-		if (StartTransform.Equals(FTransform::Identity))
+		auto PS = GetPlayerState<ATLCGPlayerState>();
+		if (PS)
 		{
-			StartTransform = GetActorTransform();
+			if (PS->StartTransform.Equals(FTransform::Identity))
+			{
+				PS->StartTransform = GetActorTransform();
+			}
 		}
 
 		TLCMovement->Activate();
@@ -174,6 +209,24 @@ void ATLCGPawn::UnlockSkill()
 	SkillLocked = false;
 }
 
+void ATLCGPawn::ClearTracks()
+{
+	if (Role == ROLE_Authority)
+	{
+		if (SpawnedTracks.Num() > 0)
+		{
+			for (auto &ST : SpawnedTracks)
+			{
+				ST->MulticastEnable(false);
+				TracksPool.Push(ST);
+				ST = nullptr;
+			}
+
+			SpawnedTracks.RemoveAll([](auto ST) { return !ST; });
+		}
+	}
+}
+
 void ATLCGPawn::TurnLeft()
 {
 	ServerTurnLeft();
@@ -181,7 +234,7 @@ void ATLCGPawn::TurnLeft()
 
 void ATLCGPawn::TurnRight()
 {
-	ServerTurnLRight();
+	ServerTurnRight();
 }
 
 void ATLCGPawn::ServerTurnLeft_Implementation()
@@ -202,7 +255,7 @@ bool ATLCGPawn::ServerTurnLeft_Validate()
 	return true;
 }
 
-void ATLCGPawn::ServerTurnLRight_Implementation()
+void ATLCGPawn::ServerTurnRight_Implementation()
 {
 	if (TLCMovement && TLCMovement->IsActive() && (LastRightLocataion - GetActorLocation()).Size() > (BoxComponent->GetScaledBoxExtent().Y * 2))
 	{
@@ -215,7 +268,7 @@ void ATLCGPawn::ServerTurnLRight_Implementation()
 	}
 }
 
-bool ATLCGPawn::ServerTurnLRight_Validate()
+bool ATLCGPawn::ServerTurnRight_Validate()
 {
 	return true;
 }
@@ -224,6 +277,28 @@ void ATLCGPawn::Skill()
 {
 	if (TLCMovement && TLCMovement->IsActive())
 		ServerSkill();
+}
+
+void ATLCGPawn::Touch()
+{
+	Pressed = true;
+
+	auto PC = GetController<APlayerController>();
+	if (!PC)
+		return;
+
+	bool IsCurrentlyPressed;
+
+	PC->GetInputTouchState(ETouchIndex::Touch1, PressedLocation.X, PressedLocation.Y, IsCurrentlyPressed);
+}
+
+void ATLCGPawn::UnTouch()
+{
+	if (!Swiped)
+		ServerSkill();
+
+	Pressed = false;
+	Swiped = false;
 }
 
 void ATLCGPawn::MulticastSkill_Implementation(int32 InAvaibleSkillsAmount)
@@ -332,7 +407,11 @@ void ATLCGPawn::MulticastOnRespawn_Implementation()
 		LastLeftLocation = GetActorLocation();
 		LastRightLocataion = GetActorLocation();
 
-		TLCMovement->SetRepData(FRepData(StartTransform.GetLocation(), StartTransform.GetRotation().Rotator().Yaw, nullptr));
+		auto PS = GetPlayerState<ATLCGPlayerState>();
+		if (PS)
+		{
+			TLCMovement->SetRepData(FRepData(PS->StartTransform.GetLocation(), PS->StartTransform.GetRotation().Rotator().Yaw, nullptr));
+		}
 	}
 
 	SetActorEnableCollision(true);
@@ -359,6 +438,56 @@ ATLCGPawnTrack* ATLCGPawn::SpawnTrack()
 	else
 	{
 		return nullptr;
+	}
+}
+
+void ATLCGPawn::Swipe(ESwipeDirection Dir)
+{
+	const float Error = 5.f;
+
+	if (GetActorRotation().Equals(FRotator(GetActorRotation().Pitch, 0.f, GetActorRotation().Roll), Error))
+	{
+		if (Dir == ESwipeDirection::SD_Right)
+		{
+			ServerTurnRight();
+		}
+		else if (Dir == ESwipeDirection::SD_Left)
+		{
+			ServerTurnLeft();
+		}
+	}
+	else if (GetActorRotation().Equals(FRotator(GetActorRotation().Pitch, 90.f, GetActorRotation().Roll), Error))
+	{
+		if (Dir == ESwipeDirection::SD_Up)
+		{
+			ServerTurnLeft();
+		}
+		else if (Dir == ESwipeDirection::SD_Down)
+		{
+			ServerTurnRight();
+		}
+	}
+	else if (GetActorRotation().Equals(FRotator(GetActorRotation().Pitch, -179.f, GetActorRotation().Roll), Error))
+	{
+		if (Dir == ESwipeDirection::SD_Right)
+		{
+			ServerTurnLeft();
+		}
+		else if (Dir == ESwipeDirection::SD_Left)
+		{
+			ServerTurnRight();
+		}
+	}
+	else if ((GetActorRotation().Equals(FRotator(GetActorRotation().Pitch, -90.f, GetActorRotation().Roll), Error)))
+	{
+		if (Dir == ESwipeDirection::SD_Up)
+		{
+			ServerTurnRight();
+		}
+		else if (Dir == ESwipeDirection::SD_Down)
+		{
+			ServerTurnLeft();
+		}
 	}
 }
 
