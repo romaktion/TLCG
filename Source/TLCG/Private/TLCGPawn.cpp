@@ -149,7 +149,7 @@ void ATLCGPawn::Tick(float DeltaSeconds)
 			bool IsCurrentlyPressed;
 
 			PC->GetInputTouchState(ETouchIndex::Touch1, Location.X, Location.Y, IsCurrentlyPressed);
-			if ((Location - PressedLocation).Size() > 100)
+			if ((Location - PressedLocation).Size() > 50.f)
 			{
 				Swiped = true;
 				if (FMath::Abs((PressedLocation - Location).X) > FMath::Abs((PressedLocation - Location).Y))
