@@ -301,9 +301,10 @@ void ATLCGPawn::UnTouch()
 	Swiped = false;
 }
 
-void ATLCGPawn::MulticastSkill_Implementation(int32 InAvaibleSkillsAmount)
+void ATLCGPawn::MulticastSkill_Implementation(APlayerState* Player, int32 InAvaibleSkillsAmount)
 {
 	K2_ActivateSkill(InAvaibleSkillsAmount);
+	OnUseSkill.Broadcast(GetPlayerState(), InAvaibleSkillsAmount);
 }
 
 void ATLCGPawn::ServerSkill_Implementation()
@@ -312,7 +313,8 @@ void ATLCGPawn::ServerSkill_Implementation()
 	{
 		SkillLocked = true;
 		AvaibleSkillsAmount--;
-		MulticastSkill(AvaibleSkillsAmount);
+
+		MulticastSkill(GetPlayerState(), AvaibleSkillsAmount);
 	}
 }
 

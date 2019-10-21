@@ -7,6 +7,8 @@
 #include "CanBeDamagerInterface.h"
 #include "TLCGPawn.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_TwoParams(FOnUseSkillSignature, ATLCGPawn, OnUseSkill, APlayerState*, Player, int32, NewAvaibleSkillsAmount);
+
 UENUM(BlueprintType)
 enum class ESwipeDirection : uint8
 {
@@ -84,6 +86,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TLCGPawn")
 	bool DisableSpawnTracks;
 
+	UPROPERTY(Replicated, EditDefaultsOnly, BlueprintReadOnly)
+	int32 AvaibleSkillsAmount;
+
+	UPROPERTY(BlueprintAssignable, Category = "TLCGPawn")
+	FOnUseSkillSignature OnUseSkill;
+
 private:
 	UFUNCTION()
 	void TurnLeft();
@@ -110,7 +118,7 @@ private:
 	void ServerSkill();
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastSkill(int32 InAvaibleSkillsAmount);
+	void MulticastSkill(APlayerState* Player, int32 InAvaibleSkillsAmount);
 
 	TArray<ATLCGPawnTrack*> TracksPool;
 
@@ -145,9 +153,6 @@ private:
 	ATLCGPawnTrack* SpawnTrack();
 
 	void Swipe(ESwipeDirection Dir);
-
-	UPROPERTY(EditDefaultsOnly)
-	int32 AvaibleSkillsAmount;
 
 	bool SkillLocked;
 
