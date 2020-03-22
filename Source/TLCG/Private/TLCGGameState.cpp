@@ -35,44 +35,21 @@ void ATLCGGameState::PerformRoundOver(APlayerController* AlivePlayer)
 
 	UTLCGBlueprintFunctionLibrary::StopBattle();
 
-	if (!AlivePlayer)
-		return;
+	ATLCGPlayerState* PS = nullptr;
+	if (AlivePlayer)
+		PS = AlivePlayer->GetPlayerState<ATLCGPlayerState>();
 
-	auto PS = AlivePlayer->GetPlayerState<ATLCGPlayerState>();
-	if (!PS)
-		return;
-
-	PS->Score += 1;
-
-	if (PS->Score >= ScoreToWin)
-	{
+	if (PS && ++PS->Score >= ScoreToWin)
 		GameOver(AlivePlayer);
-	}
-	else
-	{
-		//New round
+	else //New round
 		GetWorldTimerManager().SetTimer(GameOverTimerHandle, this, &ATLCGGameState::StartRound, RoundStartDelay);
-	}
 
-	auto World = GetWorld();
-	if (World)
-	{
+	if (auto World = GetWorld())
 		for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
-		{
 			if (Iterator->IsValid())
-			{
-				auto PC = Cast<ATLCGPlayerController>(Iterator->Get());
-				if (PC)
-				{
-					PS = PC->GetPlayerState<ATLCGPlayerState>();
-					if (PS)
-					{
-						MulticastOnRoundOver(PS->PlayerNumber, PS->Score);
-					}
-				}
-			}
-		}
-	}
+				if (auto PC = Cast<ATLCGPlayerController>(Iterator->Get()))
+					if (auto OPS = PC->GetPlayerState<ATLCGPlayerState>())
+						MulticastOnRoundOver(OPS->PlayerNumber, OPS->Score);
 
 	K2_OnRoundOver();
 }
