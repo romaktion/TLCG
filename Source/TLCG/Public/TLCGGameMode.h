@@ -21,8 +21,6 @@ public:
 
 	virtual void RestartPlayerAtPlayerStart(AController* NewPlayer, AActor* StartSpot);
 
-	int32 GetPlayersToStart() const {return PlayersToStart; }
-
 	APawn* SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform) override;
 
 protected:
@@ -33,9 +31,6 @@ private:
 	void OnKilled(AActor* PlayerPawn);
 
 	TArray<APlayerController*> PlayerControllers;
-
-	UPROPERTY(EditDefaultsOnly)
-	int32 PlayersToStart;
 
 	TArray<FString> PlayerNames;
 

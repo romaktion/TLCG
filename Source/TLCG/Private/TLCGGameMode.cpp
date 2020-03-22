@@ -10,10 +10,10 @@
 #include "TLCGPlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
+#include "TLCGGameInstance.h"
 
 
 ATLCGGameMode::ATLCGGameMode(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-, PlayersToStart(4)
 , CountPlayerNamesDuplicates(0)
 {
 	GameStateClass = ATLCGGameState::StaticClass();
@@ -91,14 +91,9 @@ FString ATLCGGameMode::InitNewPlayer(APlayerController* NewPlayerController, con
 		PlayerState->PlayerNumber = PlayerControllers.Num();
 	}
 
-#if UE_BUILD_SHIPPING
-	PlayersToStart = 4;
-#endif
-
-	auto GS = GetGameState<ATLCGGameState>();
-	if (GS)
+	if (auto GS = GetGameState<ATLCGGameState>())
 	{
-		if (PlayerControllers.Num() == PlayersToStart)
+		if (PlayerControllers.Num() == GetGameInstance<UTLCGGameInstance>()->PlayersToStart)
 		{
 			GS->StartGame(PlayerControllers);
 		}

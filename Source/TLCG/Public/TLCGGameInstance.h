@@ -20,4 +20,6 @@ class TLCG_API UTLCGGameInstance : public UGameInstance
 	bool Win;
 
 	int32 CountDuplicates;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite) int32 PlayersToStart = 4;
 };

@@ -183,7 +183,7 @@ void ATLCGGameState::StartRound()
 		MulticastOnRoundPreparation();
 	}
 
-	GetWorldTimerManager().SetTimer(TryStartRoundTimerHandle, this, &ATLCGGameState::TryPerformStartRound, World->GetDeltaSeconds(), true);
+	GetWorldTimerManager().SetTimer(TryStartRoundTimerHandle, this, &ATLCGGameState::TryPerformStartRound, 0.1f, true);
 }
 
 void ATLCGGameState::MulticastOnRoundStartTmer_Implementation()
@@ -237,7 +237,7 @@ void ATLCGGameState::TryPerformStartRound()
 	if (!GM)
 		return;
 
-	if (CountReadyToPlayPlayers == GM->GetPlayersToStart())
+	if (CountReadyToPlayPlayers == GetGameInstance<UTLCGGameInstance>()->PlayersToStart)
 	{
 		GetWorldTimerManager().ClearTimer(TryStartRoundTimerHandle);
 		GetWorldTimerManager().SetTimer(StartRoundTimerHandle, this, &ATLCGGameState::PerformStartRound, RoundStartDelay);
